@@ -6,6 +6,8 @@ from pymodaq.control_modules.move_utility_classes import (DAQ_Move_base, comon_p
 from pymodaq_utils.utils import ThreadCommand  # object used to send info back to the main thread
 from pymodaq_gui.parameter import Parameter
 
+from pymodaq_plugins_sequent_microsystems.hardware.smmegaind import SMMegaInd
+
 
 class PythonWrapperOfYourInstrument:
     #  TODO Replace this fake class with the import of the real python wrapper of your instrument
@@ -17,7 +19,7 @@ class PythonWrapperOfYourInstrument:
 #     for the class name and the file name.)
 # (3) this file should then be put into the right folder, namely IN THE FOLDER OF THE PLUGIN YOU ARE DEVELOPING:
 #     pymodaq_plugins_my_plugin/daq_move_plugins
-class DAQ_Move_Template(DAQ_Move_base):
+class DAQ_Move_SMMegaInd_AO(DAQ_Move_base):
     """ Instrument plugin class for an actuator.
     
     This object inherits all functionalities to communicate with PyMoDAQ’s DAQ_Move module through inheritance via
@@ -39,27 +41,22 @@ class DAQ_Move_Template(DAQ_Move_base):
     # TODO add your particular attributes here if any
 
     """
-    is_multiaxes = False  # TODO for your plugin set to True if this plugin is controlled for a multiaxis controller
-    _axis_names: Union[List[str], Dict[str, int]] = ['Axis1', 'Axis2']  # TODO for your plugin: complete the list
-    _controller_units: Union[str, List[str]] = 'mm'  # TODO for your plugin: put the correct unit here, it could be
-    # TODO  a single str (the same one is applied to all axes) or a list of str (as much as the number of axes)
-    _epsilon: Union[float, List[float]] = 0.1  # TODO replace this by a value that is correct depending on your controller
-    # TODO it could be a single float of a list of float (as much as the number of axes)
+    is_multiaxes = False
+    _axis_names: Union[List[str], Dict[str, int]] = ['Analog output']
+    _controller_units: Union[str, List[str]] = 'V'
+    _epsilon: Union[float, List[float]] = 0.1
     data_actuator_type = DataActuatorType.DataActuator  # wether you use the new data style for actuator otherwise set this
     # as  DataActuatorType.float  (or entirely remove the line)
 
-    params = [   # TODO for your custom plugin: elements to be added here as dicts in order to control your custom stage
-                ] + comon_parameters_fun(is_multiaxes, axis_names=_axis_names, epsilon=_epsilon)
+    params = [
+        {'title': 'Stack:', 'name': 'stack', 'type': 'list', 'limits': range(8)},
+        {'title': 'Channel:', 'name': 'channel', 'type': 'list', 'limits': range(1, 5)},
+    ] + comon_parameters_fun(is_multiaxes, axis_names=_axis_names, epsilon=_epsilon)
     # _epsilon is the initial default value for the epsilon parameter allowing pymodaq to know if the controller reached
     # the target value. It is the developer responsibility to put here a meaningful value
 
     def ini_attributes(self):
-        #  TODO declare the type of the wrapper (and assign it to self.controller) you're going to use for easy
-        #  autocompletion
-        self.controller: PythonWrapperOfYourInstrument = None
-
-        #TODO declare here attributes you want/need to init with a default value
-        pass
+        self.controller: SMMegaInd = None
 
     def get_actuator_value(self):
         """Get the current value from the hardware with scaling conversion.
@@ -69,8 +66,7 @@ class DAQ_Move_Template(DAQ_Move_base):
         float: The position obtained after scaling conversion.
         """
         ## TODO for your custom plugin
-        raise NotImplementedError  # when writing your own plugin remove this line
-        pos = DataActuator(data=self.controller.your_method_to_get_the_actuator_value(),  # when writing your own plugin replace this line
+        pos = DataActuator(data=self.controller.get0_10Out(self.settings['channel']),
                            units=self.axis_unit)
         pos = self.get_position_with_scaling(pos)
         return pos
@@ -90,12 +86,7 @@ class DAQ_Move_Template(DAQ_Move_base):
         return True
 
     def close(self):
-        """Terminate the communication protocol"""
-        ## TODO for your custom plugin
-        raise NotImplementedError  # when writing your own plugin remove this line
-        if self.is_master:
-            #  self.controller.your_method_to_terminate_the_communication()  # when writing your own plugin replace this line
-            ...
+        self.controller.set0_10Out(channel=self.settings['channel'], value=0)
 
     def commit_settings(self, param: Parameter):
         """Apply the consequences of a change of value in the detector settings
@@ -106,14 +97,9 @@ class DAQ_Move_Template(DAQ_Move_base):
             A given parameter (within detector_settings) whose value has been changed by the user
         """
         ## TODO for your custom plugin
-        if param.name() == 'axis':
-            self.axis_unit = self.controller.your_method_to_get_correct_axis_unit()
-            # do this only if you can and if the units are not known beforehand, for instance
-            # if the motors connected to the controller are of different type (mm, µm, nm, , etc...)
-            # see BrushlessDCMotor from the thorlabs plugin for an exemple
-
-        elif param.name() == "a_parameter_you've_added_in_self.params":
-           self.controller.your_method_to_apply_this_param_change()
+        if param.name() == 'stack':
+            self.controller.close_connection()
+            self.controller.open_connection(self.settings['stack'])
         else:
             pass
 
@@ -131,10 +117,9 @@ class DAQ_Move_Template(DAQ_Move_base):
         initialized: bool
             False if initialization failed otherwise True
         """
-        raise NotImplementedError  # TODO when writing your own plugin remove this line and modify the ones below
         if self.is_master:  # is needed when controller is master
-            self.controller = PythonWrapperOfYourInstrument(arg1, arg2, ...) #  arguments for instantiation!)
-            initialized = self.controller.a_method_or_atttribute_to_check_if_init()  # todo
+            self.controller = SMMegaInd(self.settings['stack']) #  arguments for instantiation!)
+            initialized = self.controller.check_connection()
             # todo: enter here whatever is needed for your controller initialization and eventual
             #  opening of the communication channel
         else:
@@ -156,9 +141,9 @@ class DAQ_Move_Template(DAQ_Move_base):
         self.target_value = value
         value = self.set_position_with_scaling(value)  # apply scaling if the user specified one
         ## TODO for your custom plugin
-        raise NotImplementedError  # when writing your own plugin remove this line
-        self.controller.your_method_to_set_an_absolute_value(value.value(self.axis_unit))  # when writing your own plugin replace this line
+        self.controller.set0_10Out(self.settings['channel'], value.value(self.axis_unit))  # when writing your own plugin replace this line
         self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
+
 
     def move_rel(self, value: DataActuator):
         """ Move the actuator to the relative target actuator value defined by value
@@ -172,25 +157,21 @@ class DAQ_Move_Template(DAQ_Move_base):
         value = self.set_position_relative_with_scaling(value)
 
         ## TODO for your custom plugin
-        raise NotImplementedError  # when writing your own plugin remove this line
-        self.controller.your_method_to_set_a_relative_value(value.value(self.axis_unit))  # when writing your own plugin replace this line
-        self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
+        self.controller.set0_10Out_rel(self.settings['channel'], value.value(self.axis_unit))  # when writing your own plugin replace this line
+        self.emit_status(ThreadCommand('Update_Status', ['Relative move done']))
 
     def move_home(self):
         """Call the reference method of the controller"""
 
         ## TODO for your custom plugin
-        raise NotImplementedError  # when writing your own plugin remove this line
-        self.controller.your_method_to_get_to_a_known_reference()  # when writing your own plugin replace this line
-        self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
+        self.controller.set0_10Out(self.settings['channel'], 0)  # when writing your own plugin replace this line
+        self.emit_status(ThreadCommand('Update_Status', ['Analog output set to 0 V']))
 
     def stop_motion(self):
         """Stop the actuator and emits move_done signal"""
 
-        ## TODO for your custom plugin
-        raise NotImplementedError  # when writing your own plugin remove this line
-        self.controller.your_method_to_stop_positioning()  # when writing your own plugin replace this line
-        self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
+        self.controller.set0_10Out(self.settings['channel'], 0)  # when writing your own plugin replace this line
+        self.emit_status(ThreadCommand('Update_Status', ['Analog output set to 0 V']))
 
 
 if __name__ == '__main__':
