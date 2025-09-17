@@ -35,6 +35,9 @@ class SMMegaInd:
     def set0_10Out_rel(self, channel, value):
         V_old = megaind.get0_10Out(self.stack, channel)
         return megaind.set0_10Out(self.stack, channel, V_old + value)
+    
+    def get0_10In(self, channel):
+        return megaind.get0_10In(self.stack, channel)
 
 if __name__ == "__main__":
     smmegaind = SMMegaInd(0)
