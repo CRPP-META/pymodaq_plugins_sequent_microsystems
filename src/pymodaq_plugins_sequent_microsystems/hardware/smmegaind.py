@@ -16,12 +16,18 @@ class SMMegaInd:
 
     def open_connection(self, stack):
         self.stack = stack
+        self.set_all_to_0()
+        
+    def close_connection(self):
+        self.set_all_to_0()
+    
+    def set_all_to_0(self):
+        # Set all analog outputs to O
         for channel in range(1, 5):
             megaind.set0_10Out(self.stack, channel, 0)
 
-    def close_connection(self):
-        for channel in range(1, 5):
-            megaind.set0_10Out(self.stack, channel, 0)
+        # Set all open-drain outputs to 0 → todo
+        # Set 4-20mA outputs to 0 → todo
     
     def check_connection(self):
         return megaind.checkStack(self.stack)
