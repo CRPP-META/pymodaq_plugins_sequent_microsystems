@@ -9,10 +9,6 @@ from pymodaq_gui.parameter import Parameter
 from pymodaq_plugins_sequent_microsystems.hardware.smmegaind import SMMegaInd
 
 
-class PythonWrapperOfYourInstrument:
-    #  TODO Replace this fake class with the import of the real python wrapper of your instrument
-    pass
-
 # TODO:
 # (1) change the name of the following class to DAQ_Move_TheNameOfYourChoice
 # (2) change the name of this file to daq_move_TheNameOfYourChoice ("TheNameOfYourChoice" should be the SAME
@@ -65,28 +61,13 @@ class DAQ_Move_SMMegaInd_AO(DAQ_Move_base):
         -------
         float: The position obtained after scaling conversion.
         """
-        ## TODO for your custom plugin
-        pos = DataActuator(data=self.controller.get0_10Out(self.settings['channel']),
+        pos = DataActuator(data=self.controller.get_0_10_out(self.settings['channel']),
                            units=self.axis_unit)
         pos = self.get_position_with_scaling(pos)
         return pos
 
-    def user_condition_to_reach_target(self) -> bool:
-        """ Implement a condition for exiting the polling mechanism and specifying that the
-        target value has been reached
-
-       Returns
-        -------
-        bool: if True, PyMoDAQ considers the target value has been reached
-        """
-        # TODO either delete this method if the usual polling is fine with you, but if need you can
-        #  add here some other condition to be fullfilled either a completely new one or
-        #  using or/and operations between the epsilon_bool and some other custom booleans
-        #  for a usage example see DAQ_Move_brushlessMotor from the Thorlabs plugin
-        return True
-
     def close(self):
-        self.controller.set0_10Out(channel=self.settings['channel'], value=0)
+        self.controller.close_connection()
 
     def commit_settings(self, param: Parameter):
         """Apply the consequences of a change of value in the detector settings
@@ -98,7 +79,6 @@ class DAQ_Move_SMMegaInd_AO(DAQ_Move_base):
         """
         ## TODO for your custom plugin
         if param.name() == 'stack':
-            self.controller.close_connection()
             self.controller.open_connection(self.settings['stack'])
         else:
             pass
@@ -120,8 +100,6 @@ class DAQ_Move_SMMegaInd_AO(DAQ_Move_base):
         if self.is_master:  # is needed when controller is master
             self.controller = SMMegaInd(self.settings['stack']) #  arguments for instantiation!)
             initialized = self.controller.check_connection()
-            # todo: enter here whatever is needed for your controller initialization and eventual
-            #  opening of the communication channel
         else:
             self.controller = controller
             initialized = True
@@ -141,7 +119,7 @@ class DAQ_Move_SMMegaInd_AO(DAQ_Move_base):
         self.target_value = value
         value = self.set_position_with_scaling(value)  # apply scaling if the user specified one
         ## TODO for your custom plugin
-        self.controller.set0_10Out(self.settings['channel'], value.value(self.axis_unit))  # when writing your own plugin replace this line
+        self.controller.set_0_10_out(self.settings['channel'], value.value(self.axis_unit))  # when writing your own plugin replace this line
         self.emit_status(ThreadCommand('Update_Status', ['Some info you want to log']))
 
 
@@ -157,20 +135,20 @@ class DAQ_Move_SMMegaInd_AO(DAQ_Move_base):
         value = self.set_position_relative_with_scaling(value)
 
         ## TODO for your custom plugin
-        self.controller.set0_10Out_rel(self.settings['channel'], value.value(self.axis_unit))  # when writing your own plugin replace this line
+        self.controller.set_0_10_out_rel(self.settings['channel'], value.value(self.axis_unit))  # when writing your own plugin replace this line
         self.emit_status(ThreadCommand('Update_Status', ['Relative move done']))
 
     def move_home(self):
         """Call the reference method of the controller"""
 
         ## TODO for your custom plugin
-        self.controller.set0_10Out(self.settings['channel'], 0)  # when writing your own plugin replace this line
+        self.controller.set_0_10_out(self.settings['channel'], 0)  # when writing your own plugin replace this line
         self.emit_status(ThreadCommand('Update_Status', ['Analog output set to 0 V']))
 
     def stop_motion(self):
         """Stop the actuator and emits move_done signal"""
 
-        self.controller.set0_10Out(self.settings['channel'], 0)  # when writing your own plugin replace this line
+        self.controller.set_0_10_out(self.settings['channel'], 0)  # when writing your own plugin replace this line
         self.emit_status(ThreadCommand('Update_Status', ['Analog output set to 0 V']))
 
 
