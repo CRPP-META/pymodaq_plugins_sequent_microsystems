@@ -114,7 +114,7 @@ class DAQ_0DViewer_SMMegaInd_AI(DAQ_Viewer_base):
         ## TODO for your custom plugin: you should choose EITHER the synchrone or the asynchrone version following
 
         # synchrone version (blocking function)
-        data_tot = self.controller.get0_10In(self.settings['channel'])
+        data_tot = self.controller.get_0_10_in(self.settings['channel'])
         self.dte_signal.emit(DataToExport(name='smmegaind_AI',
                                           data=[DataFromPlugins(name='Analog input', data=data_tot,
                                                                 dim='Data0D', labels=['Analog input'])]))

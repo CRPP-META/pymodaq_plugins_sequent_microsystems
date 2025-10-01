@@ -32,18 +32,38 @@ class SMMegaInd:
     def check_connection(self):
         return megaind.checkStack(self.stack)
     
-    def get0_10Out(self, channel):
+    # 0-10 V Analog Outputs
+    def get_0_10_out(self, channel):
         return megaind.get0_10Out(self.stack, channel)
     
-    def set0_10Out(self, channel, value):
+    def set_0_10_out(self, channel, value):
         return megaind.set0_10Out(self.stack, channel, value)
     
-    def set0_10Out_rel(self, channel, value):
-        V_old = megaind.get0_10Out(self.stack, channel)
-        return megaind.set0_10Out(self.stack, channel, V_old + value)
+    def set_0_10_out_rel(self, channel, value):
+        previous_value = megaind.get0_10Out(self.stack, channel)
+        return megaind.set0_10Out(self.stack, channel, previous_value + value)
     
-    def get0_10In(self, channel):
+    # 0-10 V Analaog Inputs
+    def get_0_10_in(self, channel):
         return megaind.get0_10In(self.stack, channel)
+    
+    # Open Drain Outputs
+    def set_od(self, channel, value):
+        return megaind.setOd(self.stack, channel, value)
+
+    def get_od(self, channel):
+        return megaind.getOd(self.stack, channel)
+    
+    def set_od_pwm(self, channel, value):
+        return megaind.setOdPWM(self.stack, channel, value)
+    
+    def get_od_pwm(self, channel):
+        return megaind.getOdPWM(self.stack, channel)
+    
+    def set_od_pwm_rel(self, channel, value):
+        previous_value = megaind.getOdPWM(self.stack, channel)
+        return megaind.setOdPWM(self.stack, channel, previous_value + value)
+
 
 if __name__ == "__main__":
     smmegaind = SMMegaInd(0)
